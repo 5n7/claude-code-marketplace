@@ -1,0 +1,5 @@
+{
+  "name": "git-commit",
+  "description": "Commit changes with well-structured Conventional Commits messages",
+  "version": "1.0.0"
+}

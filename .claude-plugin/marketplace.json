@@ -1,0 +1,23 @@
+{
+  "name": "5n7-plugins",
+  "owner": {
+    "name": "Shunta Komatsu"
+  },
+  "metadata": {
+    "description": "Personal Claude Code plugins by Shunta Komatsu"
+  },
+  "plugins": [
+    {
+      "name": "code-review",
+      "source": "./plugins/code-review",
+      "description": "Comprehensive multi-perspective code review with 9 parallel specialized reviewers",
+      "version": "1.0.0"
+    },
+    {
+      "name": "git-commit",
+      "source": "./plugins/git-commit",
+      "description": "Commit changes with well-structured Conventional Commits messages",
+      "version": "1.0.0"
+    }
+  ]
+}
