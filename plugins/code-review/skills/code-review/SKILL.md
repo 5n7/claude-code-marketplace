@@ -1,9 +1,6 @@
 ---
 name: code-review
-description: |
-  Comprehensive multi-perspective code review with 9 parallel specialized reviewers.
-  Use proactively after implementing features, fixing bugs, or refactoring.
-  Trigger keywords: review, code review, PR review, check code, review changes
+description: Parallel code review with 9 specialized reviewers
 allowed-tools: Read, Grep, Glob, Bash, Task, TaskOutput, AskUserQuestion
 model: sonnet
 context: fork
