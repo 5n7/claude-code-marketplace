@@ -25,7 +25,7 @@ Create a git commit for staged changes with a well-structured commit message.
 
 ### Body (after blank line)
 
-- Use markdown bullet points (`- `) to list significant changes
+- Use markdown bullet points (`-`) to list significant changes
 - Each bullet describes a specific modification, improvement, or addition
 - Focus on **what** and **why**, not how
 - Avoid repeating the summary line
