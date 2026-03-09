@@ -72,13 +72,27 @@ If no issues found, state "No [AREA] issues found."
 Also note any positive practices observed.
 ```
 
-### Step 4: Collect & Synthesize
+### Step 4: Curate & Synthesize
 
-Use `TaskOutput` to collect all results, then:
+Use `TaskOutput` to collect all reviewer results.
 
-1. Deduplicate overlapping findings
-2. Sort by severity (Critical > Major > Minor)
-3. Group related issues
+**Critical: You are the final gatekeeper. Do NOT simply aggregate all findings. Critically evaluate each issue and discard noise.**
+
+Apply the following filters to every finding:
+
+1. **Relevance filter**: Does this issue actually apply to the changed code? Discard generic advice that doesn't relate to the specific diff.
+2. **Actionability filter**: Is this a concrete, fixable issue with a clear location (`file:line`)? Discard vague or aspirational suggestions (e.g., "consider adding more tests").
+3. **Impact filter**: Would fixing this issue meaningfully improve the code's correctness, security, or maintainability? Discard nitpicks and stylistic preferences that don't affect quality.
+4. **Duplication filter**: If multiple reviewers flagged the same underlying issue, consolidate into a single finding.
+5. **False positive filter**: Re-read the actual code at the flagged location. If the reviewer misunderstood the code or the issue doesn't exist, discard it.
+
+**Severity re-assessment**: After filtering, re-evaluate severity based on actual impact:
+
+- **Critical**: Will cause bugs, data loss, security vulnerabilities, or outages in production
+- **Major**: Likely to cause issues over time, or significantly harms readability/maintainability
+- **Minor**: Genuine improvements, but code works correctly without them
+
+**Target output**: Aim for **3-7 high-signal findings** total. It is perfectly acceptable to report zero issues if the code is solid. A review with 0-2 findings is better than one with 15 low-value items.
 
 ## Output Format
 
@@ -89,6 +103,8 @@ Use `TaskOutput` to collect all results, then:
 **Overall Assessment**: ✅ Approved / ⚠️ Needs Improvements / ❌ Major Issues
 
 ---
+
+[Only include severity sections that have findings. Omit empty sections.]
 
 ### 🚨 Critical (Must Fix)
 
@@ -107,13 +123,7 @@ Use `TaskOutput` to collect all results, then:
 
 ### ✨ Positive Observations
 
-[Well-implemented aspects]
-
-### 📋 Action Items
-
-- [ ] 🚨 Critical: [item]
-- [ ] ⚠️ Major: [item]
-- [ ] 📝 Minor: [item]
+[1-2 genuinely noteworthy aspects. Skip if nothing stands out.]
 ```
 
 ## Guidelines
@@ -121,5 +131,7 @@ Use `TaskOutput` to collect all results, then:
 - All 9 reviewers MUST run in parallel with `run_in_background: true`
 - Use `model: sonnet` for reviewers (cost-efficient)
 - Each reviewer focuses ONLY on their specialty
+- The main agent (you) is responsible for **filtering out noise** — quality over quantity
+- Omit empty severity sections entirely; do not show "No issues found" per section
+- Do NOT include an Action Items checklist — the findings themselves are the action items
 - Reference project patterns from CLAUDE.md when available
-- Be constructive - highlight good practices alongside issues
