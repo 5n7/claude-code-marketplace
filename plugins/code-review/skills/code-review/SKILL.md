@@ -93,7 +93,9 @@ Review ONLY the changed lines and their immediate context. Do not review unchang
 
 ### Step 4: Curate & Synthesize (YOUR MOST IMPORTANT RESPONSIBILITY)
 
-Collect all reviewer results. Then apply **strict multi-pass filtering**:
+**CRITICAL: Wait for ALL launched agents to complete before proceeding.** Do NOT start synthesizing results while any agent is still running. Check that every agent you launched has returned its result. If some agents are still running, wait — do not output partial results.
+
+Once ALL results are collected, apply **strict multi-pass filtering**:
 
 #### Pass 1: Discard Irrelevant
 

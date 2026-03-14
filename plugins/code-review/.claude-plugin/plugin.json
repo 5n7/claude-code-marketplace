@@ -1,5 +1,5 @@
 {
   "name": "code-review",
   "description": "Multi-perspective code review with 10 specialized parallel reviewers powered by Opus",
-  "version": "2.0.0"
+  "version": "2.0.1"
 }
