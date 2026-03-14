@@ -1,137 +1,176 @@
 ---
 name: code-review
-description: Parallel code review with 9 specialized reviewers
-allowed-tools: Read, Grep, Glob, Bash, Task, TaskOutput, AskUserQuestion
-model: sonnet
+description: Parallel code review with 10 specialized reviewers
+allowed-tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion
+model: opus
 context: fork
 user-invocable: true
 ---
 
 # Multi-Perspective Parallel Code Review
 
-Orchestrate comprehensive code reviews using 9 specialized reviewers running in parallel.
+Orchestrate comprehensive code reviews using specialized reviewers running in parallel.
+You are the **orchestrator and final gatekeeper** — your primary responsibility is launching reviewers and then **ruthlessly filtering** their results to surface only genuinely actionable findings.
 
 ## Process
 
 ### Step 1: Determine Review Target
 
-First, check what changes exist:
+Check what changes exist:
 
 ```bash
 git diff --stat           # unstaged
 git diff --cached --stat  # staged
 ```
 
-**If changes are ambiguous or unclear**, use AskUserQuestion to clarify:
+**Auto-select rules:**
 
-```
-Question: "What would you like to review?"
-Options:
-- "Unstaged changes" (git diff)
-- "Staged changes" (git diff --cached)
-- "Last commit" (git diff HEAD~1)
-- "Changes from main branch" (git diff main...HEAD)
-```
-
-**Auto-select** if only one type of change exists:
-
-- Only unstaged → review unstaged
-- Only staged → review staged
-- No local changes → review last commit
-
-If no changes found anywhere, inform the user and exit.
+- Only unstaged changes → review unstaged
+- Only staged changes → review staged
+- Both exist → use AskUserQuestion to clarify
+- No local changes → review last commit (`git diff HEAD~1`)
+- No changes at all → inform user and exit
 
 ### Step 2: Gather Context
 
-- Read `CLAUDE.md` for project-specific standards
-- Note the scope and purpose of changes
+- Read `CLAUDE.md` for project-specific standards (if it exists)
+- Note the scope, language, and purpose of changes
+- **Detect project language**: Check file extensions in the diff to determine if this is a Go project (`.go` files present)
 
 ### Step 3: Launch Parallel Reviews
 
-Launch ALL 9 reviewers **in a single message** using Task tool with `run_in_background: true` and `model: sonnet`.
+Launch reviewers **in a single message** using the Agent tool.
 
-See `reviewers.md` for each reviewer's focus area and checklist.
+**Reviewer selection:**
 
-**Prompt template for each reviewer:**
+Always launch these 9 core reviewers:
+
+1. `architecture` — Design patterns, structure, coupling
+2. `security` — Vulnerabilities, data protection, auth
+3. `performance` — Bottlenecks, complexity, optimization
+4. `bug-correctness` — Edge cases, error handling, race conditions
+5. `consistency` — Naming, style, patterns
+6. `testing` — Coverage, quality, edge cases
+7. `documentation` — Comments, API docs, README
+8. `maintainability` — Readability, function size, config
+9. `minor-issues` — Typos, formatting, unused code
+
+**Conditional reviewer:**
+
+10. `go-specialist` — **Only launch if `.go` files are present in the diff.** Go-specific idioms, error handling, concurrency, and performance patterns.
+
+**Agent launch template:**
+
+For each reviewer, use the Agent tool with:
+
+- `subagent_type: general-purpose`
+- `model: opus`
+- `run_in_background: true`
+- `description: "[reviewer-name] code review"`
+
+**Prompt template:**
 
 ```
 You are a specialized code reviewer focusing ONLY on [AREA].
+Review ONLY the changed lines and their immediate context. Do not review unchanged code.
+
+## Project Context
+[CLAUDE.md contents if available, otherwise omit]
 
 ## Code Changes
-[git diff output]
+[full git diff output]
 
-## Review Checklist
-[checklist from reviewers.md]
+## Your Focus Area
+[description and checklist from the reviewer specification]
 
-## Output Format
-For each issue found:
-- [Severity: Critical/Major/Minor] `file:line` - Description
-  - Recommendation: How to fix
-
-If no issues found, state "No [AREA] issues found."
-Also note any positive practices observed.
+## Output Rules
+- Report ONLY issues you are highly confident about
+- Each issue MUST include: severity (Critical/Major/Minor), exact file:line, description, and concrete fix
+- If you are unsure whether something is an issue, DO NOT report it
+- If no issues found in your area, respond with exactly: "No issues found."
+- Note 1 positive practice if genuinely noteworthy, otherwise skip
 ```
 
-### Step 4: Curate & Synthesize
+### Step 4: Curate & Synthesize (YOUR MOST IMPORTANT RESPONSIBILITY)
 
-Use `TaskOutput` to collect all reviewer results.
+Collect all reviewer results. Then apply **strict multi-pass filtering**:
 
-**Critical: You are the final gatekeeper. Do NOT simply aggregate all findings. Critically evaluate each issue and discard noise.**
+#### Pass 1: Discard Irrelevant
 
-Apply the following filters to every finding:
+Remove any finding that:
 
-1. **Relevance filter**: Does this issue actually apply to the changed code? Discard generic advice that doesn't relate to the specific diff.
-2. **Actionability filter**: Is this a concrete, fixable issue with a clear location (`file:line`)? Discard vague or aspirational suggestions (e.g., "consider adding more tests").
-3. **Impact filter**: Would fixing this issue meaningfully improve the code's correctness, security, or maintainability? Discard nitpicks and stylistic preferences that don't affect quality.
-4. **Duplication filter**: If multiple reviewers flagged the same underlying issue, consolidate into a single finding.
-5. **False positive filter**: Re-read the actual code at the flagged location. If the reviewer misunderstood the code or the issue doesn't exist, discard it.
+- Refers to code NOT in the diff (unchanged lines, other files)
+- Is generic advice not specific to the actual changes
+- Discusses hypothetical scenarios that don't apply
 
-**Severity re-assessment**: After filtering, re-evaluate severity based on actual impact:
+#### Pass 2: Verify Against Source
 
-- **Critical**: Will cause bugs, data loss, security vulnerabilities, or outages in production
-- **Major**: Likely to cause issues over time, or significantly harms readability/maintainability
-- **Minor**: Genuine improvements, but code works correctly without them
+For EVERY remaining finding:
 
-**Target output**: Aim for **3-7 high-signal findings** total. It is perfectly acceptable to report zero issues if the code is solid. A review with 0-2 findings is better than one with 15 low-value items.
+- **Read the actual source file at the flagged location** using the Read tool
+- Confirm the issue genuinely exists in the current code
+- Discard false positives where the reviewer misread or misunderstood the code
+
+#### Pass 3: Assess Real Impact
+
+For each verified finding, ask:
+
+- "If this is not fixed, what concretely goes wrong?"
+- If you cannot articulate a specific, realistic failure scenario → discard
+- Re-classify severity based on actual impact:
+  - **Critical**: Will cause bugs, data loss, security vulnerabilities, or outages in production
+  - **Major**: Likely to cause issues over time, or significantly harms readability/maintainability
+  - **Minor**: Genuine improvement, but code works correctly without it
+
+#### Pass 4: Deduplicate & Consolidate
+
+- Merge findings that describe the same root cause
+- Keep the most precise description with the best file:line reference
+
+#### Final Gate
+
+Report ALL findings that survived the filtering passes above. The number of findings is not a concern — what matters is that every reported finding is genuine, verified, and actionable. Zero findings is a perfectly valid outcome for solid code.
 
 ## Output Format
 
 ```markdown
 ## Code Review Summary
 
-**Files Reviewed**: [files]
-**Overall Assessment**: ✅ Approved / ⚠️ Needs Improvements / ❌ Major Issues
+**Scope**: [brief description of what was reviewed]
+**Files**: [list of files]
+**Assessment**: Approved / Needs Improvements / Major Issues
 
 ---
 
-[Only include severity sections that have findings. Omit empty sections.]
+[Only include sections that have findings. Omit empty sections entirely.]
 
-### 🚨 Critical (Must Fix)
-
-- **[Category]** `file:line` - Description
-  - 💡 Recommendation
-
-### ⚠️ Major (Should Fix)
+### Critical (Must Fix)
 
 - **[Category]** `file:line` - Description
-  - 💡 Recommendation
+  - Recommendation
 
-### 📝 Minor (Consider)
+### Major (Should Fix)
 
 - **[Category]** `file:line` - Description
-  - 💡 Recommendation
+  - Recommendation
 
-### ✨ Positive Observations
+### Minor (Consider)
 
-[1-2 genuinely noteworthy aspects. Skip if nothing stands out.]
+- **[Category]** `file:line` - Description
+  - Recommendation
+
+### Positive Observations
+
+[1-2 genuinely noteworthy aspects only. Omit if nothing stands out.]
 ```
 
-## Guidelines
+## Rules
 
-- All 9 reviewers MUST run in parallel with `run_in_background: true`
-- Use `model: sonnet` for reviewers (cost-efficient)
-- Each reviewer focuses ONLY on their specialty
-- The main agent (you) is responsible for **filtering out noise** — quality over quantity
-- Omit empty severity sections entirely; do not show "No issues found" per section
-- Do NOT include an Action Items checklist — the findings themselves are the action items
+- ALL reviewers MUST launch in parallel in a single message with `run_in_background: true`
+- Use `model: opus` for all reviewers
+- The `go-specialist` reviewer launches ONLY when `.go` files appear in the diff
+- You (the orchestrator) MUST read source files to verify findings before including them — do not blindly trust reviewer output
+- Quality over quantity: fewer accurate findings >> many noisy findings
+- Omit empty severity sections; do not show "No issues found" per section
+- Do NOT include an Action Items checklist
 - Reference project patterns from CLAUDE.md when available
