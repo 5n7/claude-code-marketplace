@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Parallel code review with 10 specialized reviewers
+description: Parallel code review with up to 12 specialized reviewers
 allowed-tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion
 model: opus
 context: fork
@@ -35,7 +35,7 @@ git diff --cached --stat  # staged
 
 - Read `CLAUDE.md` for project-specific standards (if it exists)
 - Note the scope, language, and purpose of changes
-- **Detect project language**: Check file extensions in the diff to determine if this is a Go project (`.go` files present)
+- **Detect project language**: Check file extensions in the diff to determine which conditional reviewers to activate (`.go`, `.ts`/`.tsx`, `.jsx`/`.vue`/`.svelte` files)
 
 ### Step 3: Launch Parallel Reviews
 
@@ -55,9 +55,11 @@ Always launch these 9 core reviewers:
 8. `maintainability` — Readability, function size, config
 9. `minor-issues` — Typos, formatting, unused code
 
-**Conditional reviewer:**
+**Conditional reviewers:**
 
 10. `go-specialist` — **Only launch if `.go` files are present in the diff.** Go-specific idioms, error handling, concurrency, and performance patterns.
+11. `typescript-specialist` — **Only launch if `.ts` or `.tsx` files are present in the diff.** TypeScript-specific type safety, type design, strict mode compliance, and module patterns.
+12. `frontend-specialist` — **Only launch if `.tsx`, `.jsx`, `.vue`, or `.svelte` files are present in the diff.** React/Vue/Svelte component design, accessibility, rendering performance, and state management.
 
 **Agent launch template:**
 
@@ -171,6 +173,8 @@ Report ALL findings that survived the filtering passes above. The number of find
 - ALL reviewers MUST launch in parallel in a single message with `run_in_background: true`
 - Use `model: opus` for all reviewers
 - The `go-specialist` reviewer launches ONLY when `.go` files appear in the diff
+- The `typescript-specialist` reviewer launches ONLY when `.ts` or `.tsx` files appear in the diff
+- The `frontend-specialist` reviewer launches ONLY when `.tsx`, `.jsx`, `.vue`, or `.svelte` files appear in the diff
 - You (the orchestrator) MUST read source files to verify findings before including them — do not blindly trust reviewer output
 - Quality over quantity: fewer accurate findings >> many noisy findings
 - Omit empty severity sections; do not show "No issues found" per section
