@@ -18,6 +18,12 @@
       "source": "./plugins/git-commit",
       "description": "Commit changes with well-structured Conventional Commits messages",
       "version": "1.0.0"
+    },
+    {
+      "name": "order",
+      "source": "./plugins/order",
+      "description": "Reorder code elements into semantically meaningful and consistent order",
+      "version": "1.0.0"
     }
   ]
 }
